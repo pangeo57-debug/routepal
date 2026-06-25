@@ -2349,12 +2349,21 @@ let state = {
 // ============================================================
 const App = {
   init(){
-    state.settings = Storage.loadSettings();
-    state.students = Storage.loadStudents();
-    state.schedule = Storage.loadSchedule();
-    state.coords   = Storage.loadCoords();
+    try {
+      state.settings = Storage.loadSettings();
+      state.students = Storage.loadStudents();
+      state.schedule = Storage.loadSchedule();
+      state.coords   = Storage.loadCoords();
+    } catch(e) {
+      localStorage.clear();
+      state.settings = defaultSettings();
+      state.students = [];
+      state.schedule = {};
+      state.coords = {};
+    }
 
-    // First run: clean slate + onboarding
+    if(!Array.isArray(state.settings.workDays)) state.settings.workDays = [1,2,3,4,5];
+
     if(!localStorage.getItem('rp_init_v24')){
       state.settings = defaultSettings();
       Storage.saveSettings(state.settings);
@@ -2365,16 +2374,15 @@ const App = {
       this.runScheduler();
     }
 
-    // Default schedule day = today or first work day
     const today = new Date().getDay();
     const todayISO = today===0?7:today;
-    state.scheduleDay = state.settings.workDays.includes(todayISO)
-      ? todayISO : (state.settings.workDays[0]||1);
+    const workDays = state.settings.workDays.length ? state.settings.workDays : [1,2,3,4,5];
+    state.scheduleDay = workDays.includes(todayISO) ? todayISO : (workDays[0]||1);
     state.routeDay = state.scheduleDay;
 
-    this.updateNavLabels();
-    this.renderHome();
-    this.registerSW();
+    try { this.updateNavLabels(); } catch(e){}
+    try { this.renderHome(); } catch(e){ console.error('renderHome failed',e); }
+    try { this.registerSW(); } catch(e){}
   },
 
   nav(screen){
